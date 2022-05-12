@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch_geometric.nn import GCNConv
-
+# TODO: FIT Activation functions (I didn't wrtie any activation function now)
 
 # 0. Co-Attention Module [Done]
 class CoAttentionNetwork(nn.Module):
@@ -40,12 +40,12 @@ class CoAttentionNetwork(nn.Module):
 # The GCAN model
 
 # 1. GCN part [Not Yet]
-#  TODO: generate edge weight based on cosine similarity.
 class GCN(torch.nn.Module):
     def __init__(self, in_feat_dim=12, hid_feat_dim=256, out_feat_dim=128):
         super(GCN, self).__init__()
         self.GCN_l1 = GCNConv(in_feat_dim, hid_feat_dim)
         self.GCN_l2 = GCNConv(hid_feat_dim, out_feat_dim)
+        self.cos = nn.CosineSimilarity(dim=0, eps=1e-6)
 
     def cal_edge_index(self, user_data):
         # user_data, shape [25, 12]
@@ -53,29 +53,30 @@ class GCN(torch.nn.Module):
         # (1) This graph should be fully-connected
         source_node = []
         target_node = []
-
+        edge_weight = []
         len_user_data = user_data.shape[0]
-        for i in range(len_user_data):
-            for j in range(len_user_data):
-                if i != j:
-                    source_node.append(i)
-                    target_node.append(j)
 
-        return torch.LongTensor([source_node, target_node])
+        with torch.no_grad():
+            for i in range(len_user_data):
+                for j in range(len_user_data):
+                    if i != j:
+                        source_node.append(i)
+                        target_node.append(j)
+                        edge_weight.append(self.cos(user_data[i], user_data[j]))
+
+        return torch.LongTensor([source_node, target_node]), F.normalize(torch.Tensor(edge_weight), dim=0)
 
     def forward(self, user_batch):
         # user_batch, shape [Batch, 25, 12]
 
         batch_size = user_batch.shape[0]
-        edge_index = self.cal_edge_index(user_batch)
 
         gcn_outputs = []
         for i in range(batch_size):
             # We need to take user_batch element 1 by 1 cause GCNConv doesnt support batch training.
-
+            edge_index, edge_weight = self.cal_edge_index(user_batch[i])
             gcn_output1 = self.GCN_l1(user_batch[i], edge_index)
             gcn_output2 = self.GCN_l2(gcn_output1, edge_index)
-
             gcn_outputs.append(gcn_output2.unsqueeze(dim=0))
 
         return torch.cat(gcn_outputs, dim=0)
@@ -126,13 +127,13 @@ class CNN_Encoder(torch.nn.Module):
 class GRU_Encoder(torch.nn.Module):
     def __init__(self, in_dim=12, hid_dim=64):
         super(GRU_Encoder, self).__init__()
-        self.gru_encoder = torch.nn.GRU(input_size=in_dim, hidden_size=hid_dim)
+        self.gru_encoder = torch.nn.GRU(input_size=in_dim, hidden_size=hid_dim, batch_first=True)
         pass
 
     def forward(self, user_batch):
         # user_batch: UsrInfo, size [B, length_of_usrs=25, dim=12]
-        user_batch = user_batch.permute([1, 0, 2])
-        return self.gru_encoder(user_batch)
+        #user_batch = user_batch.permute([1, 0, 2])
+        return self.gru_encoder(user_batch)[0]
 
 
 # 5. Integrator
@@ -150,10 +151,10 @@ class GCAN(torch.nn.Module):
                  propagation_gru_hid_dim,
                  source_gcn_coattn_dim,
                  source_cnn_coattn_dim,
-                 fc_in_dim,
                  fc_out_dim
                  ):
         super(GCAN, self).__init__()
+        self.fc_in_dim = gcn_out_dim + 2*source_gru_hid_dim + cnn_kernel_size + propagation_gru_hid_dim
         self.gcn_module = GCN(gcn_in_dim, gcn_hid_dim, gcn_out_dim)
         self.source_gru = Source_Encoder(source_gru_in_dim, source_gru_hid_dim)
         self.cnn_module = CNN_Encoder(cnn_filter_size, cnn_in_dim, cnn_kernel_size)
@@ -162,7 +163,7 @@ class GCAN(torch.nn.Module):
         self.source_gcn_coattn = CoAttentionNetwork(source_gru_hid_dim, gcn_out_dim, source_gcn_coattn_dim)
         # source_cnn_coattn, V is the source, Q is the cnn
         self.source_cnn_coattn = CoAttentionNetwork(source_gru_hid_dim, propagation_gru_hid_dim, source_cnn_coattn_dim)
-        self.fc_layer = torch.nn.Linear(fc_in_dim, fc_out_dim)
+        self.fc_layer = torch.nn.Linear(self.fc_in_dim, fc_out_dim)
 
     def forward(self, source_text, user_batch):
         # The shape of user_batch: (batch_size, length_of_user_under_post, user_feat_dim)
@@ -170,11 +171,15 @@ class GCAN(torch.nn.Module):
         source_output = self.source_gru(source_text)
         cnn_output = self.cnn_module(user_batch)
         gru_output = self.user_gru(user_batch)
-        co_attn_output1 = self.source_gcn_coattn(source_output, gcn_output)
-        co_attn_output2 = self.source_cnn_coattn(source_output, cnn_output)
+        _, _, source_output1, gcn_output1 = self.source_gcn_coattn(source_output, gcn_output)
+        _, _, source_output2, cnn_output1 = self.source_cnn_coattn(source_output, cnn_output)
+        gru_output2 = torch.mean(gru_output, dim=1)
+        print(source_output1.shape, gcn_output1.shape, source_output2.shape, cnn_output1.shape, gru_output2.shape)
 
-        #whole_rep = torch.concat(co_attn_output1, co_attn_output2, pool(gru_output1))
-        return None
+        whole_rep = torch.cat([source_output1, gcn_output1, source_output2, cnn_output1, gru_output2], dim=1)
+        prediction = self.fc_layer(whole_rep)
+        result = F.softmax(F.relu(prediction))
+        return result
 
 if __name__ == '__main__':
     # Play with our model with a mini-demo
@@ -192,7 +197,7 @@ if __name__ == '__main__':
                 propagation_gru_hid_dim=32,
                 source_gcn_coattn_dim=64,
                 source_cnn_coattn_dim=64,
-                fc_in_dim=128 + 32 + 32 + 32,
                 fc_out_dim=2
                 )
-    gcan(source_batch, user_batch)
+    res = gcan(source_batch, user_batch)
+    print(res.shape)
