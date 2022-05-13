@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch_geometric.nn import GCNConv
-# TODO: FIT Activation functions (I didn't wrtie any activation function now)
+
 
 # 0. Co-Attention Module [Done]
 class CoAttentionNetwork(nn.Module):
@@ -39,7 +39,7 @@ class CoAttentionNetwork(nn.Module):
 
 # The GCAN model
 
-# 1. GCN part [Not Yet]
+# 1. GCN part [Done]
 class GCN(torch.nn.Module):
     def __init__(self, in_feat_dim=12, hid_feat_dim=256, out_feat_dim=128):
         super(GCN, self).__init__()
@@ -84,12 +84,15 @@ class GCN(torch.nn.Module):
 
 # 2. Source Encoder [Done]
 class Source_Encoder(torch.nn.Module):
-    def __init__(self, in_dim=3347, hid_dim=32):
+    def __init__(self, in_dim=3347, mid_dim=256, hid_dim=32):
         super(Source_Encoder, self).__init__()
-        self.gru_encoder = torch.nn.GRU(input_size=in_dim, hidden_size=hid_dim, batch_first=True)
+        self.fc = torch.nn.Linear(in_dim, mid_dim)
+        self.gru_encoder = torch.nn.GRU(input_size=mid_dim, hidden_size=hid_dim, batch_first=True)
 
     def forward(self, source_text):
         # source_text: one hot, size [B, length of words, vec_dim]
+        # According to the paper, we first encode the one-hot representation to word embedding.
+        source_text = torch.tanh(self.fc(source_text))
         return self.gru_encoder(source_text)[0]
 
 
@@ -174,11 +177,18 @@ class GCAN(torch.nn.Module):
         _, _, source_output1, gcn_output1 = self.source_gcn_coattn(source_output, gcn_output)
         _, _, source_output2, cnn_output1 = self.source_cnn_coattn(source_output, cnn_output)
         gru_output2 = torch.mean(gru_output, dim=1)
-        print(source_output1.shape, gcn_output1.shape, source_output2.shape, cnn_output1.shape, gru_output2.shape)
+        #print(source_output1.shape, gcn_output1.shape, source_output2.shape, cnn_output1.shape, gru_output2.shape)
 
+
+        if source_output1.shape[0] != gru_output2.shape[0]:
+            source_output1 = source_output1.unsqueeze(dim=0)
+            gcn_output1 = gcn_output1.unsqueeze(dim=0)
+            source_output2 = source_output2.unsqueeze(dim=0)
+            cnn_output1 = cnn_output1.unsqueeze(dim=0)
         whole_rep = torch.cat([source_output1, gcn_output1, source_output2, cnn_output1, gru_output2], dim=1)
         prediction = self.fc_layer(whole_rep)
-        result = F.softmax(F.relu(prediction))
+
+        result = F.softmax(F.relu(prediction), dim=1)
         return result
 
 if __name__ == '__main__':
@@ -200,4 +210,4 @@ if __name__ == '__main__':
                 fc_out_dim=2
                 )
     res = gcan(source_batch, user_batch)
-    print(res.shape)
+    #print(res.shape)
