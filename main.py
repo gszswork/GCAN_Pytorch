@@ -4,11 +4,12 @@ from sklearn.model_selection import train_test_split
 from collections import Counter
 from torch.utils.data.sampler import WeightedRandomSampler
 from tqdm import tqdm
+import random
 from sklearn.metrics import accuracy_score,precision_score, recall_score, f1_score
 """
 Experiment on PHEME dataset, 0-rumor, 1-non-rumor
 """
-
+random.seed(10)
 if __name__ == "__main__":
     # 1. Data Preprocessing
     path = 'project-data/'
@@ -40,24 +41,31 @@ if __name__ == "__main__":
     # 3. train model
     gcan = GCAN(gcn_in_dim=12,
                 gcn_hid_dim=64,
-                gcn_out_dim=128,
+                gcn_out_dim=256,
                 source_gru_in_dim=3347,
-                source_gru_hid_dim=32,
+                source_gru_mid_dim=512,
+                source_gru_hid_dim=256,
                 cnn_filter_size=3,
                 cnn_in_dim=12,
-                cnn_kernel_size=32,
+                cnn_kernel_size=128,
                 propagation_gru_in_dim=12,
-                propagation_gru_hid_dim=32,
-                source_gcn_coattn_dim=64,
-                source_cnn_coattn_dim=64,
+                propagation_gru_hid_dim=128,
+                source_gcn_coattn_dim=256,
+                source_cnn_coattn_dim=256,
                 fc_out_dim=2
                 )
 
     device = 'cpu'
     loss = torch.nn.CrossEntropyLoss()
+    '''
+    optimizer = torch.optim.Adam([
+        {'params':base_params},
+        {'params':model.BUrumorGCN.conv1.parameters(),'lr':lr/5},
+        {'params': model.BUrumorGCN.conv2.parameters(), 'lr': lr/5}
+    ], lr=lr, weight_decay=weight_decay)
+    '''
 
-
-    optimizer = torch.optim.Adam(gcan.parameters(), 0.001)
+    optimizer = torch.optim.Adam(gcan.parameters(), lr=0.005, weight_decay=1e-4)
     for epoch in range(200):
         loss_sum = 0.0
         batch_num_trained = 0
@@ -67,6 +75,8 @@ if __name__ == "__main__":
             u = batch[1].to(device)
             y = batch[2].to(device)
 
+            if y.shape[0] < 4:
+                continue
             model_output = gcan(s, u)
             # print(y.shape,model_output.shape)
             # l = loss(model_output, y)
@@ -77,19 +87,20 @@ if __name__ == "__main__":
             optimizer.step()
             loss_sum += l.detach()
             batch_num_trained += 1
-        print(loss_sum / batch_num_trained)
+        print('training epoch: ', epoch, 'Loss: ', loss_sum / batch_num_trained)
 
         # 4. Test: We test model at every
         test_loss_sum = 0
         batch_num_tested = 0
         pred_list = []
         true_list = []
-        for batch in tqdm(testLoader):
+        for batch in testLoader:
             s = batch[0].to(device)
             u = batch[1].to(device)
             y = batch[2].to(device)
 
-
+            if y.shape[0] < 4:
+                continue
             model_output = gcan(s, u)
             test_loss_sum += loss(model_output, y.squeeze(dim=1)).detach()
             batch_num_tested += 1
@@ -102,7 +113,6 @@ if __name__ == "__main__":
             true_list.extend(test_true)
             #print(test_pred, test_true)
 
-        print(true_list[:10], pred_list[:10])
         a = accuracy_score(true_list, pred_list)
         #p = precision_score(true_list, pred_list)
         r = recall_score(true_list, pred_list)

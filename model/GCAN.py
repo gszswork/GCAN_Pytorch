@@ -22,7 +22,7 @@ class CoAttentionNetwork(nn.Module):
 
     def forward(self, V, Q):
         V = V.permute([0, 2, 1]) # We have to permute V to fit the shape for matmul().
-        # print('W_b:', self.W_b.shape, ', V:', V.shape, ', Q:', Q.shape)
+        #print('W_b:', self.W_b.shape, ', V:', V.shape, ', Q:', Q.shape)
         C = torch.matmul(Q, torch.matmul(self.W_b, V))
         H_v = nn.Tanh()(torch.matmul(self.W_v, V) + torch.matmul(torch.matmul(self.W_q, Q.permute(0, 2, 1)), C))
         H_q = nn.Tanh()(
@@ -146,6 +146,7 @@ class GCAN(torch.nn.Module):
                  gcn_hid_dim,
                  gcn_out_dim,
                  source_gru_in_dim,
+                 source_gru_mid_dim,
                  source_gru_hid_dim,
                  cnn_filter_size,
                  cnn_in_dim,
@@ -159,7 +160,7 @@ class GCAN(torch.nn.Module):
         super(GCAN, self).__init__()
         self.fc_in_dim = gcn_out_dim + 2*source_gru_hid_dim + cnn_kernel_size + propagation_gru_hid_dim
         self.gcn_module = GCN(gcn_in_dim, gcn_hid_dim, gcn_out_dim)
-        self.source_gru = Source_Encoder(source_gru_in_dim, source_gru_hid_dim)
+        self.source_gru = Source_Encoder(source_gru_in_dim, source_gru_mid_dim, source_gru_hid_dim)
         self.cnn_module = CNN_Encoder(cnn_filter_size, cnn_in_dim, cnn_kernel_size)
         self.user_gru = GRU_Encoder(propagation_gru_in_dim, propagation_gru_hid_dim)
         # source_gcn_coattn, V is the source, Q is the gcn

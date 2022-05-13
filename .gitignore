@@ -1,3 +1,7 @@
 
 *.xml
 .idea/GCAN_Pytorch.iml
+data/__pycache__/Preprocess.cpython-38.pyc
+*.pyc
+*.json
+*.jsonl
