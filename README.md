@@ -7,7 +7,7 @@ Their implementation is not complete lacking data preprocessing and training cod
 extract /project-data folder to root dictory.
 
 
-* Abstract:
+# Abstract:
 This paper solves the fake news detection problem under a more realistic scenario. Given the source short-text tweet and its retweet users without text comments, we aim at predicting whether it is fake or not, and generating explanation by highlighting the evidences on suspicious retweeters and the words they concern. We develop a novel neural networkbased model, Graph-aware Co-Attention Networks (GCAN) to achieve the goal. Extensive experiments on real tweet datasets exhibit that GCAN can significantly outperform state-ofthe- art methods by 16% in accuracy on average,and produce reasonable explanation.
 
 <img src="https://github.com/l852888/GCAN/blob/master/figure/model.PNG" width="75%" height="75%">
