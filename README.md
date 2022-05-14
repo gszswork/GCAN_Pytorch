@@ -1,6 +1,12 @@
 # GCAN: Graph-aware Co-Attention Networks for Explainable Fake News Detection on Social Media
-* Abstract:
 
+## Note
+Original Repo(official post): https://github.com/l852888/GCAN
+
+Their implementation is not complete lacking data preprocessing and training code. We reproduce theri experiment with another dataset: PHEME. The collected PHEME dataset are here: 
+extract /project-data folder to root dictory.
+------------------
+* Abstract:
 This paper solves the fake news detection problem under a more realistic scenario. Given the source short-text tweet and its retweet users without text comments, we aim at predicting whether it is fake or not, and generating explanation by highlighting the evidences on suspicious retweeters and the words they concern. We develop a novel neural networkbased model, Graph-aware Co-Attention Networks (GCAN) to achieve the goal. Extensive experiments on real tweet datasets exhibit that GCAN can significantly outperform state-ofthe- art methods by 16% in accuracy on average,and produce reasonable explanation.
 
 <img src="https://github.com/l852888/GCAN/blob/master/figure/model.PNG" width="75%" height="75%">
@@ -17,23 +23,19 @@ GCAN consists of five components.
 
 Datasets
 ------------------
-Two well-known datasets compiled by Ma et al. (2017), Twitter15 and Twitter16, are utilized. Each dataset contains a collection of source tweets, along with their corresponding sequences of retweet users.
-
-We choose only “true” and “fake” labels as the ground truth. Since the original data does not contain user profiles, we use user IDs to crawl user information via Twitter API.
-
-Due to the privacy, we can not provide the data we crawled from the API.
+PHEME. Available: 
 
 Requirements
 ------------------
 python >=3.5
 
-Keras 2.2.4
+Pytorch >= 1.8.0
 
-scikit-learn 0.21
+scikit-learn 0.24
 
 pandas 0.23.0
 
-numpy 1.14.3
+numpy 1.20.2
 
 Citation
 ------------------------
