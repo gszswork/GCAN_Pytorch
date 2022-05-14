@@ -3,12 +3,13 @@
 ## Note
 Original Repo(official post): https://github.com/l852888/GCAN
 
-Their implementation is not complete lacking data preprocessing and training code. We reproduce theri experiment with another dataset: PHEME. The collected PHEME dataset are here: 
+Their implementation is not complete lacking data preprocessing and training code. We reproduce theri experiment with in Pytorch another dataset: PHEME. The collected PHEME dataset are here: 
 
 <a href="https://drive.google.com/file/d/1n_NRjSFPcvkS7KiKzvIN4DURE59rDxkt/view?usp=sharing"><strong>PHEME google drive»</strong></a>
 
 extract /project-data folder to root dictory.
 
+You can also run with different dataset by collecting your own data. The data process codes are included in `./data/Preprocessing.py`
 
 ## Abstract:
 This paper solves the fake news detection problem under a more realistic scenario. Given the source short-text tweet and its retweet users without text comments, we aim at predicting whether it is fake or not, and generating explanation by highlighting the evidences on suspicious retweeters and the words they concern. We develop a novel neural networkbased model, Graph-aware Co-Attention Networks (GCAN) to achieve the goal. Extensive experiments on real tweet datasets exhibit that GCAN can significantly outperform state-ofthe- art methods by 16% in accuracy on average,and produce reasonable explanation.
