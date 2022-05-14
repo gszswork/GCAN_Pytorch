@@ -35,7 +35,7 @@ if __name__ == "__main__":
     sampler = WeightedRandomSampler(samples_weight, len(samples_weight))
 
 
-    trainLoader = torch.utils.data.DataLoader(dataset=x_train, batch_size=4, sampler=sampler)
+    trainLoader = torch.utils.data.DataLoader(dataset=x_train, batch_size=4)
     testLoader = torch.utils.data.DataLoader(dataset=x_test, batch_size=4)
 
     # 3. train model
