@@ -9,7 +9,7 @@ from sklearn.metrics import accuracy_score,precision_score, recall_score, f1_sco
 """
 Experiment on PHEME dataset, 0-rumor, 1-non-rumor
 """
-random.seed(10)
+device = 'cpu'
 if __name__ == "__main__":
     # 1. Data Preprocessing
     path = 'project-data/'
@@ -18,10 +18,10 @@ if __name__ == "__main__":
     test_data_path = 'test.data.jsonl'
 
     raw_PHEME, raw_PHEME_label = load_sort_data(path, train_data_path, dev_data_path, test_data_path)
-    mini_PHEME, mini_PHEME_label = large_diffsuion_filter(raw_PHEME, raw_PHEME_label, 25) # mini in size but larger diffusion.
+    mini_PHEME, mini_PHEME_label = large_diffsuion_filter(PHEME=raw_PHEME, PHEME_label=raw_PHEME_label, diffuse_size=0) # TODO: you can set size filter here.
 
     mini_data, vectorizer = collect_dataset(mini_PHEME, mini_PHEME_label)
-    dataset = PHEME_Dataset(mini_data, vectorizer, 25, 40)
+    dataset = PHEME_Dataset(pheme_data=mini_data, Count_Vectorizer=vectorizer, user_length=25, source_length=40)
 
     x_train, x_test, y_train, y_test = train_test_split(dataset, mini_PHEME_label, test_size=0.25)
 
@@ -39,10 +39,11 @@ if __name__ == "__main__":
     testLoader = torch.utils.data.DataLoader(dataset=x_test, batch_size=4)
 
     # 3. train model
+    word_embedding_dim = dataset[0][0].shape[1]
     gcan = GCAN(gcn_in_dim=12,
                 gcn_hid_dim=64,
                 gcn_out_dim=256,
-                source_gru_in_dim=3347,
+                source_gru_in_dim=word_embedding_dim,
                 source_gru_mid_dim=512,
                 source_gru_hid_dim=256,
                 cnn_filter_size=3,
@@ -53,9 +54,9 @@ if __name__ == "__main__":
                 source_gcn_coattn_dim=256,
                 source_cnn_coattn_dim=256,
                 fc_out_dim=2
-                )
+                ).to(device)
 
-    device = 'cpu'
+
     loss = torch.nn.CrossEntropyLoss()
     '''
     optimizer = torch.optim.Adam([
@@ -65,7 +66,7 @@ if __name__ == "__main__":
     ], lr=lr, weight_decay=weight_decay)
     '''
 
-    optimizer = torch.optim.Adam(gcan.parameters(), lr=0.005, weight_decay=1e-4)
+    optimizer = torch.optim.Adam(gcan.parameters(), lr=0.05, weight_decay=1e-4)
     for epoch in range(200):
         loss_sum = 0.0
         batch_num_trained = 0

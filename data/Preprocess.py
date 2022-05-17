@@ -79,6 +79,7 @@ def load_sort_data(path, train_data_path, dev_data_path, test_data_path):
 
 def large_diffsuion_filter(PHEME, PHEME_label, diffuse_size):
     # The diffusions in PHEME can be very small, lets select those with larger diffsuion size.
+    # Filter dataset with diffusion size larger than diffuse_size.
     mini_PHEME = []
     mini_PHEME_label = []
 
